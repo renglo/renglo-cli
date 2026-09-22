@@ -112,7 +112,6 @@ def _system(workspace: Path, args, profile: str, region: str) -> tuple[dict, str
             email_identity_type=args.email_identity_type or "",
             email_hosted_zone_id=args.email_hosted_zone_id or "",
             enable_staging=bool(args.enable_staging),
-            compute_type=args.compute_type or "lambda_only",
         )
         return data, f"wrote {data['wrote']}\nnext: {data['next']}"
     if sub == "synth":
@@ -481,6 +480,12 @@ def invoked_prog() -> str:
     return "renglo"
 
 
+def _aws_flags(parser: argparse.ArgumentParser) -> None:
+    """Accept --profile/--region after the verb. Parent flags only work before it."""
+    parser.add_argument("--profile", default=argparse.SUPPRESS, help="AWS CLI profile")
+    parser.add_argument("--region", default=argparse.SUPPRESS, help="AWS region")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=invoked_prog(),
@@ -495,8 +500,10 @@ def _parser() -> argparse.ArgumentParser:
     p_help = sub.add_parser("help", help="List commands")
     p_help.add_argument("topic", nargs="?", default="")
 
-    sub.add_parser("status", help="Env, stacks, SSM, sheets, next command")
-    sub.add_parser("doctor", help="Local toolchain and workspace checks")
+    p_status = sub.add_parser("status", help="Env, stacks, SSM, sheets, next command")
+    _aws_flags(p_status)
+    p_doctor = sub.add_parser("doctor", help="Local toolchain and workspace checks")
+    _aws_flags(p_doctor)
 
     system = sub.add_parser("system", help="New tenant / platform config")
     ssub = system.add_subparsers(dest="system_cmd")
@@ -508,12 +515,13 @@ def _parser() -> argparse.ArgumentParser:
     p_init.add_argument("--email-identity-type", required=True, choices=["domain", "email"])
     p_init.add_argument("--email-hosted-zone-id", default="")
     p_init.add_argument("--enable-staging", action="store_true")
-    p_init.add_argument("--compute-type", default="lambda_only")
     p_synth = ssub.add_parser("synth")
     p_synth.add_argument("--dry-run", action="store_true")
     p_boot = ssub.add_parser("cdk-bootstrap")
+    _aws_flags(p_boot)
     p_boot.add_argument("--dry-run", action="store_true")
     p_sdest = ssub.add_parser("destroy")
+    _aws_flags(p_sdest)
     p_sdest.add_argument("--yes", action="store_true")
     p_sdest.add_argument("--dry-run", action="store_true")
     inst = ssub.add_parser("install")
@@ -523,6 +531,7 @@ def _parser() -> argparse.ArgumentParser:
     p_start.add_argument("--profile", required=True)
     isub.add_parser("plan")
     p_apply = isub.add_parser("apply")
+    _aws_flags(p_apply)
     p_apply.add_argument("--through", default="write-state")
     p_apply.add_argument("--dry-run", action="store_true")
 
@@ -530,13 +539,16 @@ def _parser() -> argparse.ArgumentParser:
     ksub = stack.add_subparsers(dest="stack_cmd")
     ksub.add_parser("help")
     p_ks = ksub.add_parser("status")
+    _aws_flags(p_ks)
     p_ks.add_argument("which", nargs="?", default="")
     p_kd = ksub.add_parser("deploy")
+    _aws_flags(p_kd)
     p_kd.add_argument("--stack", required=True, help="a, b, or a,b")
     p_kd.add_argument("--create-github-oidc", action="store_true")
     p_kd.add_argument("--write-state", action="store_true")
     p_kd.add_argument("--dry-run", action="store_true")
     p_kx = ksub.add_parser("destroy")
+    _aws_flags(p_kx)
     p_kx.add_argument("--stack", required=True)
     p_kx.add_argument("--yes", action="store_true")
     p_kx.add_argument("--dry-run", action="store_true")
@@ -544,20 +556,27 @@ def _parser() -> argparse.ArgumentParser:
     state = sub.add_parser("state", help="SSM variables")
     tsub = state.add_subparsers(dest="state_cmd")
     tsub.add_parser("help")
-    tsub.add_parser("show")
+    p_tsh = tsub.add_parser("show")
+    _aws_flags(p_tsh)
     p_tw = tsub.add_parser("write")
+    _aws_flags(p_tw)
     p_tw.add_argument("--dry-run", action="store_true")
     p_tl = tsub.add_parser("local-config")
+    _aws_flags(p_tl)
     p_tl.add_argument("--dry-run", action="store_true")
 
     email = sub.add_parser("email", help="SES")
     esub = email.add_subparsers(dest="email_cmd")
     esub.add_parser("help")
-    esub.add_parser("sender-status")
-    esub.add_parser("allow-status")
+    p_ess = esub.add_parser("sender-status")
+    _aws_flags(p_ess)
+    p_eas = esub.add_parser("allow-status")
+    _aws_flags(p_eas)
     p_ev = esub.add_parser("verify-sender")
+    _aws_flags(p_ev)
     p_ev.add_argument("--dry-run", action="store_true")
     p_ea = esub.add_parser("allow")
+    _aws_flags(p_ea)
     p_ea.add_argument("address")
     p_ea.add_argument("--dry-run", action="store_true")
 
@@ -565,15 +584,18 @@ def _parser() -> argparse.ArgumentParser:
     asub = admin.add_subparsers(dest="admin_cmd")
     asub.add_parser("help")
     p_ac = asub.add_parser("create")
+    _aws_flags(p_ac)
     p_ac.add_argument("email")
     p_ac.add_argument("--dry-run", action="store_true")
     p_ash = asub.add_parser("show")
+    _aws_flags(p_ash)
     p_ash.add_argument("email")
 
     user = sub.add_parser("user", help="Collaborator invite")
     usub = user.add_subparsers(dest="user_cmd")
     usub.add_parser("help")
     p_ui = usub.add_parser("invite")
+    _aws_flags(p_ui)
     p_ui.add_argument("email")
     p_ui.add_argument("--team", required=True)
     p_ui.add_argument("--portfolio", required=True)

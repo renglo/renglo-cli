@@ -101,7 +101,7 @@ GitHub OIDC (so CI can assume a role in this account) is created automatically t
 
 ### New tenant
 
-From-scratch operator path (clones, prerequisites, handover folder): [NEW_ENVIRONMENT.md](NEW_ENVIRONMENT.md).
+From-scratch operator path (clones, stacks, peers, first version from a given BOM): [NEW_ENVIRONMENT.md](NEW_ENVIRONMENT.md).
 
 ```text
 renglo system init --env-name NAME --github-repo ORG/BOM \
@@ -217,10 +217,9 @@ Writes the tenant identity from flags. Does not deploy anything.
 | `--email-identity-type domain | email`   | yes                                                              |
 | `--email-hosted-zone-id ID`   | no       | Route 53 zone, when DNS is automatic.                            |
 | `--enable-staging`            | no       | Create a staging environment. Staging should ALWAYS be used.     |
-| `--compute-type lambda_only   | fargate  | ec2`                                                             |
 
 
-Does not place extensions.
+Does not place extensions. Hub compute is always Lambda. Peer Fargate/EC2 is catalog config, not a flag here.
 
 #### `renglo system synth`
 

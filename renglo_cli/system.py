@@ -24,7 +24,6 @@ from renglo_cli.workspace import (
     ensure_gitignore,
     env_name,
     launcher_config,
-    launcher_example,
     load_customer_config,
     ops_dir,
     require_platform,
@@ -40,7 +39,6 @@ def init(
     email_identity_type: str,
     email_hosted_zone_id: str = "",
     enable_staging: bool = False,
-    compute_type: str = "lambda_only",
 ) -> dict[str, Any]:
     require_platform(workspace)
     env = (env_name_flag or "").strip()
@@ -55,29 +53,19 @@ def init(
         raise RengloError("system init requires --email-from")
     if ident not in ("domain", "email"):
         raise RengloError("--email-identity-type must be domain or email")
-    compute = (compute_type or "lambda_only").strip() or "lambda_only"
-    if compute not in ("lambda_only", "fargate", "ec2"):
-        raise RengloError("--compute-type must be lambda_only, fargate, or ec2")
 
     dest = launcher_config(workspace)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    data: dict[str, Any] = {}
-    example = launcher_example(workspace)
-    if example.is_file():
-        raw = json.loads(example.read_text(encoding="utf-8"))
-        if isinstance(raw, dict):
-            data = {k: v for k, v in raw.items() if not str(k).startswith("_")}
-    data.pop("extension_path", None)
-    data["env_name"] = env
-    data["github_repo"] = repo
-    data["email_from"] = frm
-    data["email_identity_type"] = ident
+    data: dict[str, Any] = {
+        "env_name": env,
+        "github_repo": repo,
+        "email_from": frm,
+        "email_identity_type": ident,
+        "enable_staging": bool(enable_staging),
+        "package_registry": {"domain_owners": []},
+    }
     if email_hosted_zone_id.strip():
         data["email_hosted_zone_id"] = email_hosted_zone_id.strip()
-    else:
-        data.pop("email_hosted_zone_id", None)
-    data["enable_staging"] = bool(enable_staging)
-    data["compute_type"] = compute
     dest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     ensure_gitignore(workspace)
     return {

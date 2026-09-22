@@ -224,10 +224,9 @@ Writes the tenant identity from flags. Does not deploy anything.
 | `--email-identity-type domain | email`   | yes                                                  |
 | `--email-hosted-zone-id ID`   | no       | Route 53 zone, when DNS is automatic.                |
 | `--enable-staging`            | no       | Also create a staging environment.                   |
-| `--compute-type lambda_only   | fargate  | ec2`                                                 |
 
 
-Does not place extensions.
+Does not place extensions. Hub compute is always Lambda. Peer Fargate/EC2 is catalog config, not a flag here.
 
 #### `arbitium system synth`
 

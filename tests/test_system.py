@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from renglo_cli.aws import resolve_aws
 from renglo_cli.cli import main
 from renglo_cli.errors import RengloError
 from renglo_cli.stack import parse_stacks
@@ -18,13 +19,15 @@ def test_system_init_writes_config_without_extension_path(platform: Path) -> Non
         email_identity_type="domain",
         email_hosted_zone_id="Z123",
         enable_staging=False,
-        compute_type="lambda_only",
     )
     cfg = json.loads((platform / "launcher" / "cdk" / "customer-config.json").read_text())
     assert cfg["env_name"] == "demo1"
     assert cfg["github_repo"] == "Acme/demo-bom"
     assert cfg["email_from"] == "noreply@demo.test"
     assert "extension_path" not in cfg
+    assert "compute_type" not in cfg
+    assert "github_handlers_repo" not in cfg
+    assert "ec2_instance_type" not in cfg
     assert "_comment" not in cfg
     assert data["next"].startswith("renglo system install start")
     assert (platform / ".gitignore").read_text().find(".renglo/") >= 0
@@ -40,6 +43,9 @@ def test_system_install_sheet(platform: Path) -> None:
     )
     start = install_start(platform, profile="demo-profile", region="us-east-1")
     assert start["sheet"]["aws_profile"] == "demo-profile"
+    profile, region = resolve_aws(platform)
+    assert profile == "demo-profile"
+    assert region == "us-east-1"
     plan = install_plan(platform)
     assert "synth" in plan["remaining"]
     assert "write-state" in plan["remaining"]

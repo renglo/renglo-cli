@@ -18,9 +18,13 @@ def resolve_aws(
     sheet: dict[str, Any] | None = None,
     require_profile: bool = True,
 ) -> tuple[str, str]:
-    """Profile/region from flags, then sheet, then env, then customer-config."""
+    """Profile/region from flags, then the local install sheet, then env."""
     chosen_profile = (profile or "").strip()
     chosen_region = (region or "").strip()
+    if sheet is None and (not chosen_profile or not chosen_region):
+        from renglo_cli.sheets import load_extension, load_system
+
+        sheet = load_system(workspace) or load_extension(workspace)
     if sheet:
         if not chosen_profile:
             chosen_profile = str(sheet.get("aws_profile") or "").strip()
@@ -37,7 +41,10 @@ def resolve_aws(
         except RengloError:
             chosen_region = "us-east-1"
     if require_profile and not chosen_profile:
-        raise RengloError("AWS profile required — pass --profile (or set AWS_PROFILE)")
+        raise RengloError(
+            "AWS profile required — pass --profile, set AWS_PROFILE, "
+            "or run renglo system install start --profile NAME"
+        )
     return chosen_profile, chosen_region or "us-east-1"
 
 

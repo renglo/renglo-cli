@@ -1,10 +1,9 @@
-# New Renglo environment (operator)
+# New Arbitium environment (operator)
 
 This is the from-scratch path. When you finish, AWS has a running platform (login, mail, storage, identity), worker **peer** stacks, and a **first product version** taken from a BOM somebody already cut — not from a laptop checkout of the apps.
 
-You do not need to know how the platform is built. You run the commands below, in order. If you lose your place, run `renglo status` — it prints the next command.
+You do not need to know how the platform is built. You run the commands below, in order. If you lose your place, run `arbitium status` — it prints the next command.
 
-`arbitium` is the same program as `renglo`. Use either name.
 
 ---
 
@@ -52,14 +51,14 @@ Until you run §8–§10, the hosted API and Amplify app are empty shells. That 
 | **A region.** `us-east-1` is the usual choice. Pass `--region` if you use another.                                                                                                                                                                                                          |     |
 
 
-The first deploy in an account/region also bootstraps CDK. `renglo system install apply` does that for you.
+The first deploy in an account/region also bootstraps CDK. `arbitium system install apply` does that for you.
 
 ### GitHub
 
 
 | Need                                                                                                                                                                                                                                                                            | Why |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
-| **Access to clone** `renglo/bootstrap`, `renglo/launcher`, `renglo/bom-helper`, and `renglo/renglo-cli` (private org repos). Use SSH or HTTPS with a GitHub credential. | |
+| **Access to clone** `arbitium/bootstrap`, `arbitium/launcher`, `renglo/bom-helper`, and `renglo/renglo-cli` (private org repos). Use SSH or HTTPS with a GitHub credential. | |
 | **A stable `*-bom` repository** that somebody already cut — for example `YourOrg/acme-bom`. It holds `deploy_targets.yml`, `bom/`, `console_bom/`, and `peers_bom/`. You clone this repo. You do **not** clone `renglo-api`, `console`, or `renglo-lib`. | |
 | **GitHub Actions** enabled on that BOM repo, with org access to `bom-helper` (the BOM workflows check it out). The `--github-repo` you pass at init must be this same `ORG/REPO` so Stack A OIDC trusts those workflows. | |
 
@@ -147,7 +146,7 @@ cd ..
 Keep that venv active for the rest of this document (`which renglo` should print a path under `renglo-cli/renglo-venv`).
 
 ```bash
-renglo doctor --profile YOUR_PROFILE
+arbitium doctor --profile YOUR_PROFILE
 ```
 
 Every check should be `ok`. If AWS `sts` fails, fix the profile before you continue.
@@ -161,7 +160,7 @@ Every check should be `ok`. If AWS `sts` fails, fix the profile before you conti
 Replace the placeholders.
 
 ```bash
-renglo system init \
+arbitium  system init \
   --env-name acme0922 \
   --github-repo YourOrg/your-bom \
   --email-from noreply@your-domain.com \
@@ -184,16 +183,16 @@ This writes identity only. Nothing is deployed yet.
 ## 4. Build the platform in AWS
 
 ```bash
-renglo system install start --profile YOUR_PROFILE
-renglo system install plan          # optional: see remaining phases
-renglo system install apply
+arbitium  system install start --profile YOUR_PROFILE
+arbitium  system install plan          # optional: see remaining phases
+arbitium  system install apply
 ```
 
 `apply` synthesizes the apps, bootstraps CDK in the account/region if needed, deploys stack **A** then stack **B**, and registers URLs and the sender in AWS.
 
 It **stops before** mail verification and the first admin. That is intentional.
 
-If it fails halfway, fix the error and run `renglo system install apply` again. Finished phases are skipped. `renglo status` shows where you are.
+If it fails halfway, fix the error and run `arbitium system install apply` again. Finished phases are skipped. `arbitium status` shows where you are.
 
 `--dry-run` on `apply` prints what would run.
 
@@ -204,21 +203,21 @@ If it fails halfway, fix the error and run `renglo system install apply` again. 
 ## 5. Prove the sender, create the first admin
 
 ```bash
-renglo email sender-status
-renglo email verify-sender
+arbitium email sender-status
+arbitium email verify-sender
 ```
 
 - **domain:** wait until the domain shows `Success`. If DNS is not automatic, add the records AWS shows and re-run `verify-sender`.
 - **email:** open the mailbox, click the AWS confirmation link, then re-run `verify-sender`.
 
 ```bash
-renglo admin create you@example.com
+arbitium admin create you@example.com
 ```
 
 Cognito emails a temporary password. Open the **setup** URL the command prints (or the local one later: `http://127.0.0.1:5174/invite?setup=admin&email=you@example.com`) and set a real password.
 
 ```bash
-renglo admin show you@example.com
+arbitium admin show you@example.com
 ```
 
 ---
@@ -227,12 +226,12 @@ renglo admin show you@example.com
 
 ## 6. Allow test inboxes (SES sandbox)
 
-Skip this once the account has SES production access (`renglo email sender-status` says you are not in sandbox).
+Skip this once the account has SES production access (`arbitium email sender-status` says you are not in sandbox).
 
 ```bash
-renglo email allow you@example.com
-renglo email allow teammate@example.com
-renglo email allow-status
+arbitium email allow you@example.com
+arbitium email allow teammate@example.com
+arbitium email allow-status
 ```
 
 Each person must click the SES confirmation mail. `Pending` means they have not clicked yet. `Success` means the system may send to that address.
@@ -244,7 +243,7 @@ Each person must click the SES confirmation mail. `Pending` means they have not 
 ## 7. Handover folder for developers
 
 ```bash
-renglo state local-config
+arbitium state local-config
 ```
 
 That writes:
@@ -261,13 +260,13 @@ Zip or share **that folder** only if someone later wants a laptop checkout. Deve
 
 This folder does **not** put backend or console code on AWS. The hosted API and Amplify app stay empty until §10.
 
-If you later change stacks or the sender, run `renglo state local-config` again and resend the folder.
+If you later change stacks or the sender, run `arbitium state local-config` again and resend the folder.
 
 Check what was registered:
 
 ```bash
-renglo state show
-renglo stack status
+arbitium state show
+arbitium stack status
 ```
 
 ---
@@ -290,13 +289,13 @@ tenants:
 
 Commit and push that tenant row on the BOM `main` branch. CI and OIDC only see what is in the GitHub repo. A local-only edit is enough for laptop peer CDK, not for the first product deploy.
 
-Do **not** clone extension repos. `renglo peer list` shows handles; `peer deploy` downloads each handle’s pinned wheel and reads `installer/infra` (or `/infra`) from that package. A local `extensions/<handle>/` tree is only an incubation override.
+Do **not** clone extension repos. `arbitium peer list` shows handles; `peer deploy` downloads each handle’s pinned wheel and reads `installer/infra` (or `/infra`) from that package. A local `extensions/<handle>/` tree is only an incubation override.
 
 If `deploy_targets.yml` lists `hub.python` extensions that declare AWS resources, grow Stack B now so those buckets and policies exist before the first hub zip lands:
 
 ```bash
-renglo system synth
-renglo stack deploy --stack b --write-state
+arbitium system synth
+arbitium stack deploy --stack b --write-state
 ```
 
 ---
@@ -311,12 +310,12 @@ Each catalog peer is its own CloudFormation stack (`{env}-peer-{peerId}`). GitHu
 # once per machine (aws-cdk-lib for peer CDK; do not copy this venv)
 bash bom-helper/setup-venv.sh
 
-renglo peer list
-renglo peer show PEER          # optional
-renglo peer deploy --peer-id PEER --write-state
+arbitium peer list
+arbitium peer show PEER          # optional
+arbitium peer deploy --peer-id PEER --write-state
 ```
 
-Repeat `peer deploy` for every id in `renglo peer list`. `--write-state` refreshes SSM after the stack exists. It does not put handler code on the zip yet.
+Repeat `peer deploy` for every id in `arbitium peer list`. `--write-state` refreshes SSM after the stack exists. It does not put handler code on the zip yet.
 
 `peer deploy` fails if the pinned package has no `installer/infra` (older wheels predating this contract). Do not invent pins. Ask for a BOM whose packages were published with installer/infra staged into the wheel, or drop a local `extensions/<handle>/installer/infra` override for incubation.
 
@@ -347,12 +346,12 @@ That is the missing middle step. git-convoy is how a **new** BOM is cut later. I
 When the three workflows are green:
 
 ```bash
-renglo state show
-renglo stack status
-renglo peer list
+arbitium state show
+arbitium stack status
+arbitium peer list
 ```
 
-The API URL and Amplify URL from `renglo state show` should now serve that BOM version. Sign in with the admin from §5.
+The API URL and Amplify URL from `arbitium state show` should now serve that BOM version. Sign in with the admin from §5.
 
 If a workflow fails on a missing CodeArtifact version, the given BOM is not installable as-is. Do not invent pins. Ask whoever cut the BOM to publish those versions (or give you a BOM whose pins are already in the registry).
 
@@ -369,20 +368,20 @@ cd renglo-cli && bash setup_venv.sh && source renglo-venv/bin/activate && cd ..
 renglo doctor --profile YOUR_PROFILE
 
 # once per environment
-renglo system init --env-name NAME --github-repo ORG/BOM \
+arbitium system init --env-name NAME --github-repo ORG/BOM \
   --email-from ADDR --email-identity-type domain --enable-staging
-renglo system install start --profile YOUR_PROFILE
-renglo system install apply
-renglo email verify-sender
-renglo admin create ADMIN@EXAMPLE.COM
-renglo email allow ADMIN@EXAMPLE.COM
-renglo state local-config
+arbitium system install start --profile YOUR_PROFILE
+arbitium system install apply
+arbitium email verify-sender
+arbitium admin create ADMIN@EXAMPLE.COM
+arbitium email allow ADMIN@EXAMPLE.COM
+arbitium state local-config
 
 # given BOM (folder name = last segment of ORG/BOM)
 # add tenants.<NAME>.id = NAME, then push that row on main
-renglo peer list
+arbitium peer list
 bash bom-helper/setup-venv.sh
-renglo peer deploy --peer-id PEER --write-state   # once per catalog peer
+arbitium peer deploy --peer-id PEER --write-state   # once per catalog peer
 # GitHub Actions on ORG/BOM: Deploy, Deploy Console, Deploy Peers
 ```
 
@@ -403,13 +402,13 @@ First hosted version: BOM CI, not a product-repo clone.
 | `python3.12` / `cdk` / `aws_cdk` fail in `doctor` | Install those tools; re-run `bash bootstrap/setup-venvs.sh`. Do not copy `bootstrap/venv` from another machine.                 |
 | `sts` fails                                       | `aws sts get-caller-identity --profile YOUR_PROFILE`. Re-login (SSO) if needed.                                                 |
 | Stack already exists                              | You reused `--env-name`. Pick a new name or destroy the old stacks first.                                                       |
-| Mail not sending                                  | `renglo email sender-status` and `renglo email allow-status`. Sandbox requires `Success` on both the sender and each recipient. |
+| Mail not sending                                  | `arbitium email sender-status` and `arbitium email allow-status`. Sandbox requires `Success` on both the sender and each recipient. |
 | `no *-bom/deploy_targets.yml`                     | Clone the given BOM next to `launcher/` (folder name = last segment of `github_repo`).                                          |
 | `No tenant with id=…`                             | Add a `tenants:` row whose `id` equals `--env-name`. Push it if you need CI.                                                    |
 | Peer synth: no `installer/infra` in the pin       | That wheel predates shipping infra in the package. Need a republished pin, or a local `extensions/<handle>/installer/infra` override. |
 | Deploy workflow cannot assume the OIDC role       | `--github-repo` must be the BOM you are running Actions on. Re-init / re-synth A if it was wrong.                               |
 | Deploy fails on a missing CodeArtifact version    | The given pins were never published. Do not invent versions; ask for a BOM that is in the registry.                             |
-| Need to start over                                | `renglo peer destroy --peer-id PEER --yes` for each peer, then `renglo system destroy --yes` (B then A).                        |
+| Need to start over                                | `arbitium peer destroy --peer-id PEER --yes` for each peer, then `arbitium system destroy --yes` (B then A).                        |
 
 
 Full command list: [README.md](README.md). Peer catalog and CI details: [bom-helper PEERS.md](../bom-helper/docs/PEERS.md).

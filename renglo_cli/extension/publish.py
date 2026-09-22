@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 from renglo_cli.aws import apply_to_env, resolve_aws
 from renglo_cli.errors import RengloError
-from renglo_cli.workspace import find_bom_root, helper_venv_python
+from renglo_cli.workspace import find_bom_root, helper_root, helper_venv_python
 
 
 def package_dir(folder: Path) -> Path:
@@ -18,7 +19,26 @@ def package_dir(folder: Path) -> Path:
     raise RengloError(f"no pyproject.toml under {folder}")
 
 
+def _stage_package_assets(workspace: Path, folder: Path) -> None:
+    try:
+        scripts = helper_root(workspace) / "scripts"
+    except RengloError:
+        return
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    try:
+        from stage_extension_blueprints import (  # noqa: PLC0415
+            stage_extension_blueprints,
+            stage_extension_installer,
+        )
+    except ImportError:
+        return
+    stage_extension_blueprints(extension_root=folder)
+    stage_extension_installer(extension_root=folder)
+
+
 def build_wheel(workspace: Path, folder: Path) -> Path:
+    _stage_package_assets(workspace, folder)
     root = package_dir(folder)
     dist = root / "dist"
     if dist.is_dir():
