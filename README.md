@@ -1,6 +1,6 @@
 # Renglo CLI
 
-`renglo` is the operator command for a Renglo system: bring a tenant up, keep its stacks current, manage sender email and operators, invite collaborators, and install extensions.
+`renglo` is the operator command for a Renglo system: bring a tenant up, keep its stacks current, manage sender email and operators, and install extensions.
 
 It is not the release-train tool and not the package publisher. After an extension is product, later versions ride the normal release process.
 
@@ -29,6 +29,8 @@ renglo doctor
 ```
 
 The venv is named `renglo-venv` on purpose. With it active you can run `renglo` from any folder inside the workspace — it walks up until it finds one.
+
+`arbitium` is the same command (`arbitium stack status a`). Re-run `setup_venv.sh` (or `pip install -e .`) so both names land on `PATH`.
 
 Alternatively:
 
@@ -99,6 +101,8 @@ GitHub OIDC (so CI can assume a role in this account) is created automatically t
 
 ### New tenant
 
+From-scratch operator path (clones, prerequisites, handover folder): [NEW_ENVIRONMENT.md](NEW_ENVIRONMENT.md).
+
 ```text
 renglo system init --env-name NAME --github-repo ORG/BOM \
   --email-from ADDR --email-identity-type domain
@@ -112,8 +116,6 @@ renglo state local-config
 ```
 
 `install apply` builds the account, deploys A then B, and registers running URLs. It **stops before** sender verification and the first admin — those stay explicit.
-
-Then start the local API (or wait for the hosted one) and invite people with `renglo user invite`.
 
 ### Redeploy A and/or B
 
@@ -302,21 +304,33 @@ Writes the files needed to run the API and console on this laptop. Do this once 
 
 ### `email` — sending mail
 
-SES starts in **sandbox**: you can only send to addresses you have allowed. `status` prints the AWS URL for requesting production access; this CLI does not file that ticket.
+SES starts in **sandbox**: you can only send to addresses you have allowed. `sender-status` prints the AWS URL for requesting production access; this CLI does not file that ticket.
 
-#### `renglo email status`
 
-From-address, DNS mode, verification, sandbox vs production.
+
+System Email (a.k.a sender). The address from which all the system communication comes from (invitations, recovery, etc)
+
+#### `renglo email sender-status`
+
+Shows the status of the system email . From-address, DNS mode, verification, sandbox vs production.
 
 #### `renglo email verify-sender`
 
 Waits on / re-checks domain verification, or resends the inbox confirmation when the sender is a single mailbox.
+
+
+
+Allowed test emails (until SES becomes production). The addresses that need to be whitelisted with SES before opening it to the general public
 
 #### `renglo email allow ADDRESS`
 
 Sandbox recipient whitelist. The recipient must click the SES confirmation mail. No-op if the account already has production access.
 
 Allow every address you will invite until production access is granted.
+
+#### `renglo email allow-status`
+
+Every SES identity in the account/region, with verification status. Email rows are the addresses that have been sent `verify-email-identity` (the sandbox allow-list). `Pending` means the confirmation mail went out and has not been clicked yet. Domain rows are sender-domain verification.
 
 ---
 
@@ -328,33 +342,11 @@ This is **not** the in-app invite funnel. Self-signup stays disabled. Use this f
 
 #### `renglo admin create EMAIL`
 
-Creates the Cognito user and prints hosted and local setup URLs (`/invite?setup=admin&email=`). Cognito emails a temporary password. Complete setup at that URL before using the account as `--admin-email` on `user invite`.
+Creates the Cognito user and prints hosted and local setup URLs (`/invite?setup=admin&email=`). Cognito emails a temporary password. Complete setup at that URL.
 
 #### `renglo admin show EMAIL`
 
 Pool lookup: exists, status, enabled.
-
----
-
-
-
-### `user` — collaborators via the running app
-
-Needs a live API (local or hosted) and an admin who has finished setup.
-
-#### `renglo user invite EMAIL --team TEAM --portfolio PORTFOLIO`
-
-`POST /_auth/user/invite`. Refuses if SES is still in sandbox and the address has not been allowed.
-
-
-| Flag                                 | Meaning                                                                        |
-| ------------------------------------ | ------------------------------------------------------------------------------ |
-| `--api-url URL`                      | API root. Defaults to the registered `BASE_URL`, else `http://127.0.0.1:5001`. |
-| `--token TOKEN`                      | Admin bearer token.                                                            |
-| `--admin-email` / `--admin-password` | Sign in as that admin instead of passing `--token`.                            |
-
-
-There is no `renglo auth login` in this version. Pass a token or the admin email and password each time.
 
 ---
 
@@ -491,8 +483,7 @@ Tear that peer stack down. `--yes` required.
 
 - Release trains, hotfixes, or BOM regeneration (that is the convoy / publisher path)
 - Publishing wheels after the first one
-- Filing the SES production-access request (status prints the URL)
-- A saved login session (`user invite` takes a token or admin email/password each time)
+- Filing the SES production-access request (`sender-status` prints the URL)
 - Operator IAM policy helpers
 - Overflow teardown or Amplify deploy
 

@@ -19,6 +19,7 @@ dev = ["pytest>=7.0.0", "build>=1.0.0"]
 
 [project.scripts]
 renglo = "renglo_cli.cli:main"
+arbitium = "renglo_cli.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -132,7 +132,7 @@ def deploy(
         payload["state"] = state_write(
             workspace, profile=chosen_profile, region=chosen_region, dry_run=dry_run
         )
-    payload["next"] = "renglo state write" if not write_state else "renglo email status"
+    payload["next"] = "renglo state write" if not write_state else "renglo email sender-status"
     return payload
 
 

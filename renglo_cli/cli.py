@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from renglo_cli import admin as admin_cmd
@@ -215,8 +216,8 @@ def _email(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]
     if not sub or sub == "help":
         return _noun_help("email")
     dry = bool(getattr(args, "dry_run", False))
-    if sub == "status":
-        data = emailcmd.status(workspace, profile=profile, region=region)
+    if sub == "sender-status":
+        data = emailcmd.sender_status(workspace, profile=profile, region=region)
         ver = (data.get("verification") or {}).get("status")
         return data, (
             f"from: {data.get('from_email')}  mode: {data.get('SesDnsMode')}  "
@@ -228,6 +229,19 @@ def _email(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]
     if sub == "allow":
         data = emailcmd.allow(workspace, args.address, profile=profile, region=region, dry_run=dry)
         return data, f"allowed {data.get('address')}\nnext: {data.get('next')}"
+    if sub == "allow-status":
+        data = emailcmd.allow_status(workspace, profile=profile, region=region)
+        lines = [
+            f"sandbox: {data.get('sandbox')}",
+        ]
+        rows = data.get("identities") or []
+        if not rows:
+            lines.append("  (no SES identities)")
+        for row in rows:
+            lines.append(f"  {row['identity']:40} {row['type']:7} {row['status']}")
+        if data.get("hint"):
+            lines.append(data["hint"])
+        return data, "\n".join(lines)
     raise RengloError(f"unknown email command: {sub}")
 
 
@@ -458,9 +472,18 @@ def _ext_status_text(data: dict) -> str:
     )
 
 
+def invoked_prog() -> str:
+    name = Path(sys.argv[0]).name.lower()
+    if name.endswith(".exe"):
+        name = name[:-4]
+    if name == "arbitium":
+        return "arbitium"
+    return "renglo"
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="renglo",
+        prog=invoked_prog(),
         description="Operator CLI above bootstrap, launcher, and bom-helper.",
     )
     parser.add_argument("--json", action="store_true", help="JSON output")
@@ -530,7 +553,8 @@ def _parser() -> argparse.ArgumentParser:
     email = sub.add_parser("email", help="SES")
     esub = email.add_subparsers(dest="email_cmd")
     esub.add_parser("help")
-    esub.add_parser("status")
+    esub.add_parser("sender-status")
+    esub.add_parser("allow-status")
     p_ev = esub.add_parser("verify-sender")
     p_ev.add_argument("--dry-run", action="store_true")
     p_ea = esub.add_parser("allow")

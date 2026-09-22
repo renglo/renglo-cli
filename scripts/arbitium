@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Same CLI as scripts/renglo — prefers renglo-cli/renglo-venv.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VENV_NAME="${RENGLO_VENV_NAME:-renglo-venv}"
+for dir in "$VENV_NAME" renglo-venv venv; do
+  if [[ -x "$ROOT/$dir/bin/arbitium" ]]; then
+    exec "$ROOT/$dir/bin/arbitium" "$@"
+  fi
+  if [[ -x "$ROOT/$dir/bin/renglo" ]]; then
+    exec "$ROOT/$dir/bin/renglo" "$@"
+  fi
+  if [[ -x "$ROOT/$dir/bin/python" ]]; then
+    exec "$ROOT/$dir/bin/python" -m renglo_cli "$@"
+  fi
+done
+echo "arbitium: run bash setup_venv.sh from ops/renglo-cli, then:" >&2
+echo "  source renglo-venv/bin/activate" >&2
+echo "  arbitium $*" >&2
+exit 1

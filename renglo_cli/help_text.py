@@ -48,7 +48,8 @@ HELP_SECTIONS: list[HelpSection] = [
     {
         "name": "email — SES",
         "commands": [
-            "renglo email status",
+            "renglo email sender-status",
+            "renglo email allow-status",
             "renglo email verify-sender",
             "renglo email allow ADDRESS",
         ],
@@ -112,6 +113,8 @@ COMMAND_BLURBS: dict[str, str] = {
     "write": "bootstrap/install.py write-state.",
     "local-config": "Generate bootstrap/output/<env>/local-dev/.",
     "verify-sender": "Check or resend SES From-address verification.",
+    "sender-status": "From-address, DNS mode, verification, sandbox vs production.",
+    "allow-status": "SES identities and verify-email-identity status.",
     "allow": "SES sandbox recipient whitelist.",
     "create": "cognito-idp admin-create-user.",
     "invite": "POST /_auth/user/invite (running API + admin session).",

@@ -1,4 +1,6 @@
-from renglo_cli.cli import main
+import sys
+
+from renglo_cli.cli import invoked_prog, main
 from renglo_cli.help_text import format_help_text, help_payload
 
 
@@ -18,3 +20,9 @@ def test_help_lists_nouns() -> None:
     assert "Not git-convoy" in text
     payload = help_payload("stack")
     assert any("stack deploy" in c for c in payload["commands"])
+
+
+def test_arbitium_is_the_same_entry(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["arbitium"])
+    assert invoked_prog() == "arbitium"
+    assert main(["help"]) == 0

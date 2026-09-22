@@ -35,22 +35,53 @@ def _identity_for(frm: str, mode: str) -> str:
     return frm
 
 
+def _identity_type(identity: str) -> str:
+    return "email" if "@" in identity else "domain"
+
+
+def _list_ses_identities(profile: str, region: str) -> list[str]:
+    identities: list[str] = []
+    token = ""
+    while True:
+        args = ["ses", "list-identities"]
+        if token:
+            args.extend(["--next-token", token])
+        data = aws_json(profile, region, *args, allow_fail=True)
+        if not isinstance(data, dict):
+            break
+        identities.extend(str(x) for x in (data.get("Identities") or []) if str(x).strip())
+        token = str(data.get("NextToken") or "").strip()
+        if not token:
+            break
+    return identities
+
+
+def _verification_map(profile: str, region: str, identities: list[str]) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    batch = 64
+    for i in range(0, len(identities), batch):
+        chunk = identities[i : i + batch]
+        data = aws_json(
+            profile,
+            region,
+            "ses",
+            "get-identity-verification-attributes",
+            "--identities",
+            *chunk,
+            allow_fail=True,
+        )
+        attrs = (data.get("VerificationAttributes") or {}) if isinstance(data, dict) else {}
+        for name in chunk:
+            row = attrs.get(name) or {}
+            statuses[name] = str(row.get("VerificationStatus") or "Unknown")
+    return statuses
+
+
 def _verification(profile: str, region: str, identity: str) -> dict[str, Any]:
-    data = aws_json(
-        profile,
-        region,
-        "ses",
-        "get-identity-verification-attributes",
-        "--identities",
-        identity,
-        allow_fail=True,
-    )
-    attrs = {}
-    if isinstance(data, dict):
-        attrs = (data.get("VerificationAttributes") or {}).get(identity) or {}
+    statuses = _verification_map(profile, region, [identity]) if identity else {}
     return {
         "identity": identity,
-        "status": str(attrs.get("VerificationStatus") or "Unknown"),
+        "status": statuses.get(identity) or "Unknown",
     }
 
 
@@ -61,7 +92,7 @@ def _production_access(profile: str, region: str) -> bool | None:
     return None
 
 
-def status(
+def sender_status(
     workspace: Path,
     *,
     profile: str = "",
@@ -168,4 +199,40 @@ def allow(
         "dry_run": dry_run,
         "hint": "recipient must click the SES confirmation link",
         "next": "renglo user invite EMAIL --team TEAM --portfolio PORTFOLIO",
+    }
+
+
+def allow_status(
+    workspace: Path,
+    *,
+    profile: str = "",
+    region: str = "",
+) -> dict[str, Any]:
+    require_platform(workspace)
+    env = env_name(workspace)
+    chosen_profile, chosen_region = resolve_aws(workspace, profile=profile, region=region)
+    names = _list_ses_identities(chosen_profile, chosen_region)
+    statuses = _verification_map(chosen_profile, chosen_region, names)
+    rows = [
+        {
+            "identity": name,
+            "type": _identity_type(name),
+            "status": statuses.get(name) or "Unknown",
+        }
+        for name in names
+    ]
+    rows.sort(key=lambda r: (r["type"] != "email", r["identity"]))
+    prod = _production_access(chosen_profile, chosen_region)
+    return {
+        "ok": True,
+        "env": env,
+        "sandbox": (prod is False),
+        "production_access": prod,
+        "identities": rows,
+        "hint": (
+            "email rows are verify-email-identity (sandbox allow-list). "
+            "Pending means the recipient has not clicked the SES mail yet."
+            if prod is False
+            else "SES production access is on; this list is identities, not a send allow-list."
+        ),
     }
