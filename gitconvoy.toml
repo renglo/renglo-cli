@@ -1,0 +1,3 @@
+# git-convoy membership marker (repo root).
+# role: product | aux | bom | incubating
+role = "aux"
