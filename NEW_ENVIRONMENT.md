@@ -278,12 +278,11 @@ renglo stack status
 
 The BOM is the pin list. Somebody already cut it and published those versions to CodeArtifact. You do not rebuild that list here, and you do not run git-convoy.
 
-Open `your-bom/`. Confirm `deploy_targets.yml` has a `peers:` catalog, and that `bom/`, `console_bom/`, and `peers_bom/` version files are on disk. Then add **this** environment under `tenants:` if it is not already there. `id` must equal `--env-name`. Do not invent pin versions. Do not delete other tenants.
+Open `your-bom/`. Confirm `deploy_targets.yml` has a `peers:` catalog, and that `bom/`, `console_bom/`, and `peers_bom/` version files are on disk. Then add **this** environment under `tenants:` if it is not already there. The key must equal `--env-name`. Do not invent pin versions. Do not delete other tenants.
 
 ```yaml
 tenants:
   acme0922:
-    id: acme0922
     aws_account: "123456789012"   # this account (aws sts get-caller-identity)
     aws_region: us-east-1
 ```
@@ -379,7 +378,7 @@ renglo email allow ADMIN@EXAMPLE.COM
 renglo state local-config
 
 # given BOM (folder name = last segment of ORG/BOM)
-# add tenants.<NAME>.id = NAME, then push that row on main
+# add tenants.<NAME> (the key is the env prefix), then push that row on main
 renglo peer list
 bash bom-helper/setup-venv.sh
 renglo peer deploy --peer-id PEER --write-state   # once per catalog peer
@@ -405,7 +404,7 @@ First hosted version: BOM CI, not a product-repo clone.
 | Stack already exists                              | You reused `--env-name`. Pick a new name or destroy the old stacks first.                                                       |
 | Mail not sending                                  | `renglo email sender-status` and `renglo email allow-status`. Sandbox requires `Success` on both the sender and each recipient. |
 | `no *-bom/deploy_targets.yml`                     | Clone the given BOM next to `launcher/` (folder name = last segment of `github_repo`).                                          |
-| `No tenant with id=…`                             | Add a `tenants:` row whose `id` equals `--env-name`. Push it if you need CI.                                                    |
+| `No tenant …`                                     | Add a `tenants:` key equal to `--env-name`. Push it if you need CI.                                                             |
 | Peer synth: no `installer/infra` in the pin       | That wheel predates shipping infra in the package. Need a republished pin, or a local `extensions/<handle>/installer/infra` override. |
 | Deploy workflow cannot assume the OIDC role       | `--github-repo` must be the BOM you are running Actions on. Re-init / re-synth A if it was wrong.                               |
 | Deploy fails on a missing CodeArtifact version    | The given pins were never published. Do not invent versions; ask for a BOM that is in the registry.                             |
