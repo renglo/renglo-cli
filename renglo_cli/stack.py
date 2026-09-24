@@ -12,6 +12,7 @@ from renglo_cli.aws import (
     stack_status,
 )
 from renglo_cli.errors import RengloError
+from renglo_cli.peer import try_collect_peer_statuses
 from renglo_cli.run import run
 from renglo_cli.workspace import (
     bootstrap_venv_python,
@@ -54,7 +55,12 @@ def status(
             "name": name,
             "status": stack_status(chosen_profile, chosen_region, name),
         }
-    return {"ok": True, "env": env, "stacks": stacks}
+    peers = try_collect_peer_statuses(
+        workspace,
+        profile=chosen_profile,
+        region=chosen_region,
+    )
+    return {"ok": True, "env": env, "stacks": stacks, "peers": peers}
 
 
 def _cdk_deploy_argv(

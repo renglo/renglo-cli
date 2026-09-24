@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from renglo_cli.aws import resolve_aws, stack_status
 from renglo_cli.errors import RengloError
 from renglo_cli.extension.catalog import catalog_peers, load_targets
 from renglo_cli.run import run
@@ -13,6 +14,91 @@ from renglo_cli.workspace import (
     helper_root,
     require_helper,
 )
+
+
+def peer_stack_name(env: str, peer_id: str) -> str:
+    return f"{env}-peer-{peer_id}"
+
+
+def _peer_region(peer: dict[str, Any], default_region: str) -> str:
+    raw = str(peer.get("aws_region") or "").strip()
+    return raw or default_region
+
+
+def _catalog_peers(workspace: Path) -> list[dict[str, Any]]:
+    require_helper(workspace)
+    bom = find_bom_root(workspace)
+    data = load_targets(bom / "deploy_targets.yml")
+    return catalog_peers(data)
+
+
+def collect_peer_statuses(
+    workspace: Path,
+    *,
+    profile: str,
+    region: str,
+    peer_id: str = "",
+) -> list[dict[str, Any]]:
+    """CloudFormation status for every catalog peer (or one when peer_id is set)."""
+    env = env_name(workspace)
+    catalog = _catalog_peers(workspace)
+    wanted = (peer_id or "").strip()
+    if wanted:
+        catalog = [row for row in catalog if row["id"] == wanted]
+        if not catalog:
+            raise RengloError(f"peers.{wanted} not in deploy_targets.yml")
+
+    rows: list[dict[str, Any]] = []
+    for peer in catalog:
+        peer_region = _peer_region(peer, region)
+        name = peer_stack_name(env, peer["id"])
+        if profile:
+            cf_status = stack_status(profile, peer_region, name)
+        else:
+            cf_status = "unknown (pass --profile)"
+        rows.append(
+            {
+                "id": peer["id"],
+                "name": name,
+                "status": cf_status,
+                "region": peer_region,
+                "compute": peer.get("compute"),
+                "extensions": list(peer.get("extensions") or []),
+            }
+        )
+    return rows
+
+
+def try_collect_peer_statuses(
+    workspace: Path,
+    *,
+    profile: str,
+    region: str,
+) -> list[dict[str, Any]]:
+    """Like collect_peer_statuses but returns [] when the BOM catalog is unavailable."""
+    try:
+        return collect_peer_statuses(workspace, profile=profile, region=region)
+    except RengloError:
+        return []
+
+
+def status(
+    workspace: Path,
+    *,
+    profile: str = "",
+    region: str = "",
+    peer_id: str = "",
+) -> dict[str, Any]:
+    chosen_profile, chosen_region = resolve_aws(
+        workspace, profile=profile, region=region, require_profile=False
+    )
+    peers = collect_peer_statuses(
+        workspace,
+        profile=chosen_profile,
+        region=chosen_region,
+        peer_id=peer_id,
+    )
+    return {"ok": True, "env": env_name(workspace), "peers": peers}
 
 
 def _script(workspace: Path) -> Path:

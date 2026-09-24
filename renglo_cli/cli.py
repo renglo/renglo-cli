@@ -156,10 +156,7 @@ def _stack(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]
     if sub == "status":
         which = getattr(args, "which", "") or ""
         data = stack_cmd.status(workspace, which, profile=profile, region=region)
-        lines = [f"{data['env']}"]
-        for letter, row in (data.get("stacks") or {}).items():
-            lines.append(f"  {letter}: {row['name']} {row['status']}")
-        return data, "\n".join(lines)
+        return data, _format_stack_status_text(data)
     if sub == "deploy":
         oidc = None
         if getattr(args, "create_github_oidc", False):
@@ -409,6 +406,14 @@ def _peer(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]:
             f"{peer['id']} compute={peer.get('compute')} "
             f"extensions={peer.get('extensions')} peers_bom={peer.get('peers_bom')}"
         )
+    if sub == "status":
+        data = peer_cmd.status(
+            workspace,
+            profile=profile,
+            region=region,
+            peer_id=getattr(args, "peer_id", "") or "",
+        )
+        return data, _format_peer_status_text(data)
     if sub == "synth":
         data = peer_cmd.synth(workspace, args.peer_id, profile=profile, dry_run=dry)
         return data, data.get("command") or f"synth {args.peer_id}"
@@ -430,11 +435,33 @@ def _peer(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]:
     raise RengloError(f"unknown peer command: {sub}")
 
 
+def _format_peer_status_text(data: dict) -> str:
+    lines = [data["env"]]
+    for row in data.get("peers") or []:
+        lines.append(f"  {row['id']:16} {row['name']} {row['status']}")
+    if len(lines) == 1:
+        lines.append("  (no peers in deploy_targets.yml)")
+    return "\n".join(lines)
+
+
+def _format_stack_status_text(data: dict) -> str:
+    lines = [data["env"]]
+    for letter, row in (data.get("stacks") or {}).items():
+        lines.append(f"  {letter}: {row['name']} {row['status']}")
+    for row in data.get("peers") or []:
+        lines.append(f"  {row['id']}: {row['name']} {row['status']}")
+    return "\n".join(lines)
+
+
 def _status_text(data: dict) -> str:
     lines = [
         f"env:      {data.get('env')}",
         f"stacks:   a={((data.get('stacks') or {}).get('a'))}  b={((data.get('stacks') or {}).get('b'))}",
     ]
+    peer_rows = data.get("peers") or []
+    if peer_rows:
+        peer_bits = "  ".join(f"{row['id']}={row['status']}" for row in peer_rows)
+        lines.append(f"peers:    {peer_bits}")
     ssm = data.get("ssm") or {}
     if ssm:
         lines.append(f"ssm:      FROM_EMAIL={ssm.get('FROM_EMAIL')} BASE_URL={ssm.get('BASE_URL')}")
@@ -646,6 +673,9 @@ def _parser() -> argparse.ArgumentParser:
     psub = peer.add_subparsers(dest="peer_cmd")
     psub.add_parser("help")
     psub.add_parser("list")
+    p_pst = psub.add_parser("status")
+    _aws_flags(p_pst)
+    p_pst.add_argument("--peer-id", default="", help="Optional peer id (default: every catalog peer)")
     p_psh = psub.add_parser("show")
     p_psh.add_argument("peer_id")
     p_psy = psub.add_parser("synth")

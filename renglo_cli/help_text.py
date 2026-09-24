@@ -88,6 +88,7 @@ HELP_SECTIONS: list[HelpSection] = [
         "name": "peer — bom-helper CDK wrapper",
         "commands": [
             "renglo peer list",
+            "renglo peer status [--peer-id PEER]",
             "renglo peer show PEER",
             "renglo peer synth --peer-id PEER",
             "renglo peer deploy --peer-id PEER [--write-state] [--dry-run]",
@@ -126,6 +127,7 @@ COMMAND_BLURBS: dict[str, str] = {
     "push": "Commit/push *-bom main for this incubation only.",
     "finish": "role=product, git convoy init, clear sheet.",
     "list": "Catalog peers.",
+    "status": "CloudFormation status for every catalog peer stack.",
     "tree": "Every catalog handle → hub or peer.",
 }
 

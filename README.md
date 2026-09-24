@@ -458,6 +458,10 @@ Same helper `extension install deploy` uses on a peer path. Use these when the p
 
 Every peer, compute mode, and the handles on it.
 
+#### `renglo peer status [--peer-id PEER]`
+
+CloudFormation status for every catalog peer stack (`{env}-peer-{peerId}`). Also included in `renglo stack status` and `renglo status`.
+
 #### `renglo peer show PEER`
 
 One peer: compute, extensions, pin pointer.

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from renglo_cli.aws import resolve_aws, ssm_parameter, stack_outputs, stack_status
+from renglo_cli.peer import try_collect_peer_statuses
 from renglo_cli.sheets import (
     extension_next,
     load_extension,
@@ -95,6 +96,11 @@ def status(
         payload["ssm"] = None
         payload["email"] = None
     payload["stacks"] = stacks
+    payload["peers"] = try_collect_peer_statuses(
+        workspace,
+        profile=chosen_profile or "",
+        region=chosen_region,
+    )
 
     payload["next"] = _next(payload, system, extension)
     payload["hint"] = f"Next: {payload['next']}"
