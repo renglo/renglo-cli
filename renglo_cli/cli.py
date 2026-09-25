@@ -193,11 +193,7 @@ def _state(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]
     dry = bool(getattr(args, "dry_run", False))
     if sub == "show":
         data = state_cmd.show(workspace, profile=profile, region=region)
-        vars_block = data.get("vars") or {}
-        lines = [data["parameter"]]
-        for key in ("FROM_EMAIL", "FE_BASE_URL", "BASE_URL", "AMPLIFY_CONSOLE_URL"):
-            lines.append(f"  {key}: {vars_block.get(key)}")
-        return data, "\n".join(lines)
+        return data, state_cmd.format_state_show_text(data)
     if sub == "write":
         data = state_cmd.write(workspace, profile=profile, region=region, dry_run=dry)
         return data, data.get("command") or "write-state ok"
@@ -248,11 +244,19 @@ def _admin(workspace: Path, args, profile: str, region: str) -> tuple[dict, str]
     dry = bool(getattr(args, "dry_run", False))
     if sub == "create":
         data = admin_cmd.create(
-            workspace, args.email, profile=profile, region=region, dry_run=dry
+            workspace,
+            args.email,
+            profile=profile,
+            region=region,
+            console=getattr(args, "console", "") or "",
+            dry_run=dry,
         )
+        verb = str(data.get("action") or "created")
         return data, (
-            f"created {data['email']}\nsetup: {data['setup_url']}\n"
-            f"local: {data['local_setup_url']}\nnext: {data['next']}"
+            f"{verb} {data['email']} (console={data['console']})\n"
+            f"setup: {data['setup_url']}\n"
+            f"local: {data['local_setup_url']}\n"
+            f"hint: {data.get('hint')}\nnext: {data['next']}"
         )
     if sub == "show":
         data = admin_cmd.show(workspace, args.email, profile=profile, region=region)
@@ -613,6 +617,12 @@ def _parser() -> argparse.ArgumentParser:
     p_ac = asub.add_parser("create")
     _aws_flags(p_ac)
     p_ac.add_argument("email")
+    p_ac.add_argument(
+        "--console",
+        choices=("local", "staging", "production"),
+        default="",
+        help="invite link base: local (127.0.0.1:5174), staging, or production console URL",
+    )
     p_ac.add_argument("--dry-run", action="store_true")
     p_ash = asub.add_parser("show")
     _aws_flags(p_ash)
@@ -679,13 +689,16 @@ def _parser() -> argparse.ArgumentParser:
     p_psh = psub.add_parser("show")
     p_psh.add_argument("peer_id")
     p_psy = psub.add_parser("synth")
+    _aws_flags(p_psy)
     p_psy.add_argument("--peer-id", required=True)
     p_psy.add_argument("--dry-run", action="store_true")
     p_pd = psub.add_parser("deploy")
+    _aws_flags(p_pd)
     p_pd.add_argument("--peer-id", required=True)
     p_pd.add_argument("--write-state", action="store_true")
     p_pd.add_argument("--dry-run", action="store_true")
     p_px = psub.add_parser("destroy")
+    _aws_flags(p_px)
     p_px.add_argument("--peer-id", required=True)
     p_px.add_argument("--yes", action="store_true")
     p_px.add_argument("--dry-run", action="store_true")

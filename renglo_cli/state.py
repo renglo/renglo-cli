@@ -9,6 +9,57 @@ from renglo_cli.errors import RengloError
 from renglo_cli.run import run
 from renglo_cli.workspace import bootstrap_install, env_name, ops_dir, require_platform
 
+PLATFORM_VAR_STAGES = ("staging", "production")
+# Shown first in text output; remaining VARS keys follow alphabetically.
+PLATFORM_VAR_PRIORITY = (
+    "FROM_EMAIL",
+    "FE_BASE_URL",
+    "BASE_URL",
+    "AMPLIFY_CONSOLE_URL",
+    "WEBSOCKET_URL",
+)
+
+
+def _platform_var_keys(vars_block: dict[str, Any]) -> list[str]:
+    keys = [str(k) for k in vars_block.keys()]
+    ordered = [key for key in PLATFORM_VAR_PRIORITY if key in vars_block]
+    ordered.extend(sorted(key for key in keys if key not in PLATFORM_VAR_PRIORITY))
+    return ordered
+
+
+def _load_platform_vars(
+    profile: str,
+    region: str,
+    env: str,
+    stage: str,
+) -> dict[str, Any]:
+    parameter = f"/{env}/bootstrap/platform-vars/{stage}"
+    raw = ssm_parameter(profile, region, parameter)
+    vars_raw = (raw or {}).get("VARS") if isinstance(raw, dict) else {}
+    vars_block: dict[str, Any] = {}
+    if isinstance(vars_raw, dict):
+        vars_block = {str(k): v for k, v in vars_raw.items()}
+    return {
+        "parameter": parameter,
+        "present": bool(raw),
+        "vars": vars_block,
+        "var_keys": _platform_var_keys(vars_block),
+    }
+
+
+def format_state_show_text(data: dict[str, Any]) -> str:
+    lines: list[str] = [str(data.get("env") or "")]
+    for stage in PLATFORM_VAR_STAGES:
+        block = (data.get("stages") or {}).get(stage) or {}
+        lines.append(str(block.get("parameter") or f"/…/platform-vars/{stage}"))
+        if not block.get("present"):
+            lines.append("  (not registered — run renglo state write)")
+            continue
+        vars_block = block.get("vars") or {}
+        for key in block.get("var_keys") or _platform_var_keys(vars_block):
+            lines.append(f"  {key}: {vars_block.get(key)}")
+    return "\n".join(lines)
+
 
 def show(
     workspace: Path,
@@ -19,24 +70,19 @@ def show(
     require_platform(workspace)
     env = env_name(workspace)
     chosen_profile, chosen_region = resolve_aws(workspace, profile=profile, region=region)
-    raw = ssm_parameter(
-        chosen_profile,
-        chosen_region,
-        f"/{env}/bootstrap/platform-vars/production",
-    )
-    vars_block = (raw or {}).get("VARS") if isinstance(raw, dict) else {}
-    keys = {
-        "FROM_EMAIL": vars_block.get("FROM_EMAIL"),
-        "FE_BASE_URL": vars_block.get("FE_BASE_URL"),
-        "BASE_URL": vars_block.get("BASE_URL"),
-        "AMPLIFY_CONSOLE_URL": vars_block.get("AMPLIFY_CONSOLE_URL"),
+    stages = {
+        stage: _load_platform_vars(chosen_profile, chosen_region, env, stage)
+        for stage in PLATFORM_VAR_STAGES
     }
+    production = stages["production"]
     return {
         "ok": True,
         "env": env,
-        "parameter": f"/{env}/bootstrap/platform-vars/production",
-        "vars": keys,
-        "present": bool(raw),
+        "stages": stages,
+        # Backward compatibility for JSON consumers expecting production only.
+        "parameter": production["parameter"],
+        "vars": production["vars"],
+        "present": production["present"],
     }
 
 

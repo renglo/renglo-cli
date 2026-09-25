@@ -185,7 +185,7 @@ If it fails halfway, fix the error and run `renglo system install apply` again. 
 
 ---
 
-## 5. Prove the sender, create the first admin
+## 5. Prove the sender
 
 ```bash
 renglo email sender-status
@@ -195,15 +195,7 @@ renglo email verify-sender
 - **domain:** wait until the domain shows `Success`. If DNS is not automatic, add the records AWS shows and re-run `verify-sender`.
 - **email:** open the mailbox, click the AWS confirmation link, then re-run `verify-sender`.
 
-```bash
-renglo admin create you@example.com
-```
-
-Cognito emails a temporary password. Open the **setup** URL the command prints (or the local one later: `http://127.0.0.1:5174/invite?setup=admin&email=you@example.com`) and set a real password.
-
-```bash
-renglo admin show you@example.com
-```
+Do not create the admin user yet. The hosted console is not serving the invite page until §10 finishes. §11 creates the first admin once the console is live.
 
 ---
 
@@ -254,7 +246,7 @@ renglo stack status
 
 ## 8. Register this environment in the BOM
 
-Everything so far built empty infrastructure. Stack A and Stack B are running, mail works, and you have an admin — but no application code is on AWS. The hub API Lambda still answers with the placeholder image Stack A seeded, the Amplify console has never built, and the peers have no stacks at all. §8 and §9 get this environment ready; §10 installs the code.
+Everything so far built empty infrastructure. Stack A and Stack B are running and mail works — but no application code is on AWS yet. The hub API Lambda still answers with the placeholder image Stack A seeded, the Amplify console has never built, and the peers have no stacks at all. §8 and §9 get this environment ready; §10 installs the code; §11 creates the first admin.
 
 The BOM repo is the version list for the platform. Somebody already cut it and published every version it names to CodeArtifact. You do not rebuild it, you do not run git-convoy, and you do not clone product or extension repos.
 
@@ -407,11 +399,33 @@ When the three workflows are green:
 renglo state show
 ```
 
-That prints `BASE_URL` (the hosted API) and `AMPLIFY_CONSOLE_URL` (the console), now serving the versions this BOM pins. Open the console URL and sign in with the admin you created in §5.
+That prints `BASE_URL` (the hosted API) and `AMPLIFY_CONSOLE_URL` (the console), now serving the versions this BOM pins.
 
 If a workflow fails because a CodeArtifact version does not exist, the BOM you were given is not installable as-is. Do not edit the pins to versions that do exist. Ask whoever cut the BOM to publish the missing ones, or to hand you a BOM whose pins are all in the registry.
 
 git-convoy is the tool for cutting a **new** BOM later. It plays no part in installing a BOM you were given.
+
+---
+
+## 11. Create the first admin
+
+The console can now handle admin setup. Pick the stage you enabled in §8 (`staging` is typical on a first install):
+
+```bash
+renglo admin create you@example.com --console staging
+```
+
+Use `--console production` when production is enabled and that is the console you want people to use. Use `--console local` only when completing setup on a laptop checkout (`http://127.0.0.1:5174`).
+
+Cognito emails a temporary password. Open the **setup** URL the command prints and set a real password.
+
+If you created the admin earlier (for example before the console was live), run the same command again with the right `--console` value — it resends the invitation email with that console URL instead of failing with “user already exists”.
+
+```bash
+renglo admin show you@example.com
+```
+
+Open the console URL from `renglo state show` and sign in with that admin.
 
 ---
 
@@ -429,7 +443,6 @@ renglo system init --env-name NAME --github-repo ORG/BOM \
 renglo system install start --profile YOUR_PROFILE
 renglo system install apply
 renglo email verify-sender
-renglo admin create ADMIN@EXAMPLE.COM
 renglo email allow ADMIN@EXAMPLE.COM
 renglo state local-config
 
@@ -440,6 +453,7 @@ bash bom-helper/setup-venv.sh                    # once per machine
 renglo peer deploy --peer-id PEER --write-state  # once per catalog peer
 # 2. git push that tenant row on main — starts all three BOM workflows
 renglo state show                                # API + console URLs
+renglo admin create ADMIN@EXAMPLE.COM --console staging
 ```
 
 Handover (laptop later): `bootstrap/output/NAME/local-dev/`

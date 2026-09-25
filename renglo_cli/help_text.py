@@ -57,7 +57,7 @@ HELP_SECTIONS: list[HelpSection] = [
     {
         "name": "admin — Cognito",
         "commands": [
-            "renglo admin create EMAIL",
+            "renglo admin create EMAIL [--console local|staging|production]",
             "renglo admin show EMAIL",
         ],
     },
@@ -117,7 +117,7 @@ COMMAND_BLURBS: dict[str, str] = {
     "sender-status": "From-address, DNS mode, verification, sandbox vs production.",
     "allow-status": "SES identities and verify-email-identity status.",
     "allow": "SES sandbox recipient whitelist.",
-    "create": "cognito-idp admin-create-user.",
+    "create": "cognito-idp admin-create-user (resend invitation when user already exists).",
     "invite": "POST /_auth/user/invite (running API + admin session).",
     "place": "Start an incubation sheet (gitconvoy.toml incubating).",
     "config": "Edit deploy_targets.yml placement only.",

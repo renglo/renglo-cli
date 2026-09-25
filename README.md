@@ -110,7 +110,7 @@ renglo system install start --profile PROFILE
 renglo system install apply
 
 renglo email verify-sender
-renglo admin create you@example.com
+renglo admin create you@example.com --console staging
 renglo email allow teammate@example.com
 renglo state local-config
 ```
@@ -287,7 +287,7 @@ These are the values the running system uses: sender, API URL, console URL.
 
 #### `renglo state show`
 
-Prints `FROM_EMAIL`, `FE_BASE_URL`, `BASE_URL`, `AMPLIFY_CONSOLE_URL`.
+Prints every key under `/{env}/bootstrap/platform-vars/` for **staging** and **production** (URLs first, then the rest alphabetically). Application secrets are not stored here — only stack-derived `VARS`.
 
 #### `renglo state write [--dry-run]`
 
@@ -339,9 +339,21 @@ Every SES identity in the account/region, with verification status. Email rows a
 
 This is **not** the in-app invite funnel. Self-signup stays disabled. Use this for the first operator (and extra operators who should exist in the user pool before the app is up).
 
-#### `renglo admin create EMAIL`
+#### `renglo admin create EMAIL [--console local|staging|production]`
 
-Creates the Cognito user and prints hosted and local setup URLs (`/invite?setup=admin&email=`). Cognito emails a temporary password. Complete setup at that URL.
+Creates the Cognito user and prints setup URLs (`/invite?setup=admin&email=`). Cognito emails a temporary password. Complete setup at that URL.
+
+If the user already exists, the command resends instead of failing: pending invites (`FORCE_CHANGE_PASSWORD`) get a new invitation email; confirmed admins get a password reset email. In both cases the Cognito invitation template is updated to match `--console` before the email goes out.
+
+`--console` picks the invite link base:
+
+| Value | Invite opens at |
+| ----- | --------------- |
+| `staging` | `FE_BASE_URL` / `AMPLIFY_CONSOLE_URL` from `platform-vars/staging` |
+| `production` | same from `platform-vars/production` |
+| `local` | `http://127.0.0.1:5174` (laptop checkout) |
+
+When omitted, production SSM is used; if that URL is still a localhost placeholder, the link falls back to `127.0.0.1:5174`.
 
 #### `renglo admin show EMAIL`
 

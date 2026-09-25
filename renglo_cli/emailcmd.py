@@ -117,7 +117,7 @@ def sender_status(
         "production_access_url": SES_PRODUCTION_URL,
         "next": "renglo email verify-sender"
         if str(ver.get("status") or "") != "Success"
-        else "renglo admin create EMAIL",
+        else "renglo admin create EMAIL --console staging",
     }
 
 
@@ -157,7 +157,7 @@ def verify_sender(
         "resent_confirmation": resent,
         "dry_run": dry_run,
         "hint": "wait until VerificationStatus is Success; for manual_dns copy DkimRecord* CNAMEs",
-        "next": "renglo admin create EMAIL",
+        "next": "renglo admin create EMAIL --console staging",
     }
 
 
