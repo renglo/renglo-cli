@@ -199,7 +199,7 @@ def write_repo_role(folder: Path, role: str) -> Path:
     path = gitconvoy_toml(folder)
     text = (
         "# git-convoy membership marker (repo root).\n"
-        "# role: product | aux | bom | incubating\n"
+        "# role: product | ops | bom | incubating\n"
         f'role = "{role}"\n'
     )
     path.write_text(text, encoding="utf-8")
