@@ -88,22 +88,22 @@ Do this in an empty folder. Do **not** put it inside an existing product tree.
 ```bash
 mkdir acme && cd acme
 
-git clone git@github.com:renglo/bootstrap.git bootstrap
-git clone git@github.com:renglo/launcher.git launcher
-git clone git@github.com:renglo/bom-helper.git bom-helper
-git clone git@github.com:renglo/renglo-cli.git renglo-cli
+git clone -b develop git@github.com:renglo/bootstrap.git bootstrap
+git clone -b develop git@github.com:renglo/launcher.git launcher
+git clone -b develop git@github.com:renglo/bom-helper.git bom-helper
+git clone -b develop git@github.com:renglo/renglo-cli.git renglo-cli
 ```
 
 HTTPS if you do not use SSH:
 
 ```bash
-git clone https://github.com/renglo/bootstrap.git bootstrap
-git clone https://github.com/renglo/launcher.git launcher
-git clone https://github.com/renglo/bom-helper.git bom-helper
-git clone https://github.com/renglo/renglo-cli.git renglo-cli
+git clone -b develop https://github.com/renglo/bootstrap.git bootstrap
+git clone -b develop https://github.com/renglo/launcher.git launcher
+git clone -b develop https://github.com/renglo/bom-helper.git bom-helper
+git clone -b develop https://github.com/renglo/renglo-cli.git renglo-cli
 ```
 
-You should see four directories: `bootstrap`, `launcher`, `bom-helper`, `renglo-cli`.
+You should see four directories: `bootstrap`, `launcher`, `bom-helper`, `renglo-cli`. Each clone starts on **`develop`** — the integration branch for operator tooling. Day-to-day work targets `develop`; `main` is updated only when a release manager graduates `develop` and tags.
 
 If `renglo-cli` is not on GitHub yet, copy it from a machine that already has `ops/renglo-cli`.
 
