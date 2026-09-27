@@ -117,6 +117,31 @@ renglo state local-config
 
 `install apply` builds the account, deploys A then B, and registers running URLs. It **stops before** sender verification and the first admin — those stay explicit.
 
+### Existing tenant (this laptop, stacks already in AWS)
+
+Use this when `launcher/cdk/customer-config.json` already matches the environment (same `env_name` as `{env}-stack-a` / `{env}-stack-b`) and CloudFormation was deployed earlier — not a from-scratch install.
+
+There is no separate “set profile” command. The CLI remembers the profile in **`.renglo/system.json`** (gitignored under `ops/`) after you start an install session, or you pass **`--profile`** on each command, or export **`AWS_PROFILE`**.
+
+```text
+renglo system install start --profile PROFILE   # pins profile + region for later commands
+renglo status                                   # stacks, SSM URLs, next step
+renglo state show                               # platform-vars (needs the right profile)
+renglo stack status a,b
+```
+
+Confirm the profile points at the **same AWS account** as `customer-config.json` (`aws_account`). If `state show` says “not registered” but stacks exist, you are almost always on the wrong profile — not missing infrastructure.
+
+**Do not** run `renglo system install apply` just to fix the profile. With a fresh sheet it will run synth → bootstrap → stack A → stack B → write-state. That is appropriate for a **new** tenant or when you **mean** to catch the platform up; for day-2 work on an existing env, use **`stack deploy`**, **`state write`**, **`peer deploy`**, and the other job sections below instead.
+
+Optional: refresh laptop API/console config after URL or pool changes:
+
+```text
+renglo state local-config
+```
+
+Full greenfield narrative (clones, first BOM, peers): still [NEW_ENVIRONMENT.md](NEW_ENVIRONMENT.md).
+
 ### Redeploy A and/or B
 
 Day-2 loop after a platform change:
@@ -235,7 +260,7 @@ Tears down stack B, then stack A. Requires `--yes` (or `--dry-run`). Peer stacks
 
 #### `renglo system install start --profile PROFILE`
 
-Opens a system-install session. The profile is remembered for the remaining phases.
+Opens a system-install session and writes `.renglo/system.json` with `aws_profile` and `aws_region`. Later commands reuse that profile when you omit `--profile`. Safe on an **existing** environment when you only need to pin the account — use **`install apply`** only when you intend the full install pipeline (see **Existing tenant** under Jobs).
 
 #### `renglo system install plan`
 
